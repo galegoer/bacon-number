@@ -52,8 +52,6 @@ public class Movie implements HttpHandler, AutoCloseable
 	 		r.sendResponseHeaders(400, -1);
 	 		return;
 	 	}
-	 	//driver = GraphDatabase.driver("bolt://localhost:7687", AuthTokens.basic("neo4j", "1234"));
-	 	//driver = GraphDatabase.driver("http://localhost:7474", AuthTokens.basic("neo4j", "1234"));
 	 	
 	 	String name = memory.getValue();
         String Id = memory.getValue();
@@ -78,15 +76,15 @@ public class Movie implements HttpHandler, AutoCloseable
         	{
         		StatementResult result = tx.run("MATCH (a:movie) WHERE a.id = $movieId RETURN a", parameters("movieId", Id));
         		//System.out.println(result.single().get( 0 ).asString());
-        		System.out.println(result.hasNext());
+        		//System.out.println(result.hasNext());
         		if(!result.hasNext()) {
         			// Wrapping Cypher in an explicit transaction provides atomicity
                     // and makes handling errors much easier
                     tx.run("CREATE (a:movie {Name: {x}, id: {y}})", parameters("x", name,"y", Id));
                     tx.success();  // Mark this write as successful.
         		} else {
-        			//movie doesn't exist
-        			r.sendResponseHeaders(404, -1);
+        			//movie does exist
+        			r.sendResponseHeaders(400, -1);
         			return;
         		}
         	}
@@ -99,7 +97,6 @@ public class Movie implements HttpHandler, AutoCloseable
         //check nodes with MATCH
         r.sendResponseHeaders(200, -1);
         return;
-        //r.sendResponseHeaders(500, -1);
 	}
 public void handleGet(HttpExchange r) throws IOException, JSONException {
      String body = Utils.convert(r.getRequestBody());

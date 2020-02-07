@@ -75,34 +75,33 @@ public void handleGet(HttpExchange r) throws IOException, JSONException {
         											+"WHERE a.id = $actorId AND b.id = $kevinId "
         											+"MATCH p = shortestPath((a)-[*]-(b))"
         											+"RETURN p", parameters("actorId", Id, "kevinId", "nm0000102"));
-        			//System.out.println(shortest_path.list().size());
+        			tx.success();  // Mark this write as successful.
         			//Shortest path lists out every step can divide by 2 because each connection is a pair
         			number = shortest_path.list().toString().split(",").length / 2;
-        			tx.success();  // Mark this write as successful.
+        			String response = "{\n\t\"baconNumber\": \"";
+        			if(number == 0) {
+        				response = response.concat("undefined\"\n}");
+        				r.sendResponseHeaders(200, response.length());
+            	        OutputStream os = r.getResponseBody();
+            	        os.write(response.getBytes());
+            	        os.close();
+            	        return;
+        			} else {
+        				response = response.concat(number + "\"\n}");
+        	        	r.sendResponseHeaders(200, response.length());
+        	        	OutputStream os = r.getResponseBody();
+        	        	os.write(response.getBytes());
+        	        	os.close();
+        	        	return;
+        			}
         		} else {
-        			String response = "{\n\t" + 
-        	        		"\"baconNumber\": \" undefined"
-        	        		+ "\"\n}";
-        			r.sendResponseHeaders(200, response.length()); //No path respond with 200 and undefined
-        			OutputStream os = r.getResponseBody();
-        	        os.write(response.getBytes());
-        	        os.close();
+        			r.sendResponseHeaders(400, -1); //No actor respond with 400 and undefined
         			return;
         		}
         	}
         }catch(Exception e) {
         	r.sendResponseHeaders(500, -1);
-        	System.out.println(e.toString());
         	return;
         }
-        String response = "{\n\t" + 
-        		"\"baconNumber\": " + "\"" + number
-        		+ "\"\n}";
-        r.sendResponseHeaders(200, response.length());
-        OutputStream os = r.getResponseBody();
-        os.write(response.getBytes());
-        os.close();
-        return;
-
     }
 }

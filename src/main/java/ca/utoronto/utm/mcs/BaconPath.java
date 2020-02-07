@@ -62,7 +62,6 @@ public void handleGet(HttpExchange r) throws IOException, JSONException {
         		StatementResult actor_name = tx.run("MATCH (a:actor) WHERE a.id = $actorId RETURN a.Name", parameters("actorId", Id));
         		if(Id.equals("nm0000102")) { //IT's kevin bacon
         			StatementResult kevMovies = tx.run("MATCH (:actor { id: {x} })--(movie) RETURN movie.id", parameters("x", Id));
-        			//System.out.println(kevMovies.list());
   				  	pathList = "\n\t\t{\n\t\t\t"
   				  			+ "\"actorId\": \"nm0000102\",\n\t\t\t"
   				  			+ "\"movieId\": " + kevMovies.list().get(0).get("movie.id") + "\n\t\t}"; //just get the first one
@@ -99,7 +98,6 @@ public void handleGet(HttpExchange r) throws IOException, JSONException {
         			} else {
         				//PATH EXISTS TRAVERSE / PARSE IT
         				List<Record> results = shortestPath.list();
-        				System.out.println(results);
         		        if (results.isEmpty())   //MIGHT BE OPTIONAL SINCE PATH_LIST IS == "" ALREADY INTIALLY
         		        	pathList = "";
         		        else {
@@ -135,7 +133,6 @@ public void handleGet(HttpExchange r) throws IOException, JSONException {
         	}
         } catch(Exception e) {
         	r.sendResponseHeaders(500, -1);
-        	System.out.println(e.toString());
         	return;
         }
     }

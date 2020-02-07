@@ -98,7 +98,6 @@ public class Relationship implements HttpHandler, AutoCloseable
         		return;
         	}
         } catch(Exception e) {
-        	System.out.println(e.toString());
         	r.sendResponseHeaders(500, -1);
         	return;
         }
@@ -114,8 +113,6 @@ public void handleGet(HttpExchange r) throws IOException, JSONException {
  		r.sendResponseHeaders(400, -1);
  		return;
  	}
- 	//driver = GraphDatabase.driver("bolt://localhost:7687", AuthTokens.basic("neo4j", "1234"));
- 	//driver = GraphDatabase.driver("http://localhost:7474", AuthTokens.basic("neo4j", "1234"));
  	boolean relationship = false;
  	
  	String actorId = memory.getValue();
@@ -157,7 +154,6 @@ public void handleGet(HttpExchange r) throws IOException, JSONException {
     		     		"\"movieId\": " + "\"" + movieId + "\"\n\t" + 
     		     		"\"hasRelationship\": " + relationship + "\n}";
     		//relationship does not exist bool stays false
-    		response = response.concat(relationship + "\n}");
     		r.sendResponseHeaders(200, response.length());
     		OutputStream os = r.getResponseBody();
     		os.write(response.getBytes());

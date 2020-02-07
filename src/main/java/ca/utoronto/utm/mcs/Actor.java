@@ -49,12 +49,9 @@ public class Actor implements HttpHandler, AutoCloseable
 	 		deserialized = new JSONObject(body);
 	 	} catch (Exception e) {
 	 		//Error parsing the JSON Message
-	 		System.out.println(e.getMessage());
 	 		r.sendResponseHeaders(400, -1);
 	 		return;
 	 	}
-	 	//driver = GraphDatabase.driver("bolt://localhost:7687", AuthTokens.basic("neo4j", "1234"));
-	 	//driver = GraphDatabase.driver("http://localhost:7474", AuthTokens.basic("neo4j", "1234"));
 	 	String name = memory.getValue();
         String Id = memory.getValue();
         //Can have more names so only check for name and actorId
@@ -72,7 +69,6 @@ public class Actor implements HttpHandler, AutoCloseable
         	try (Transaction tx = session.beginTransaction())
         	{
         		StatementResult result = tx.run("MATCH (a:actor) WHERE a.id = $actorId RETURN a", parameters("actorId", Id));
-        		System.out.println(result.hasNext());
         		if(!result.hasNext()) {
         			//add actor because it doesn't exist
                     tx.run("CREATE (a:actor {Name: {x}, id: {y}})", parameters("x", name,"y", Id));
@@ -123,7 +119,6 @@ public void handleGet(HttpExchange r) throws IOException, JSONException {
         			//retrieve movies since we know actorID is in the database
         			//actor_movies = tx.run("MATCH (actor { actorId: {x} })<-[:ACTED_BY]-(movie) RETURN movie.Name", parameters("x", Id));
         			actor_movies = tx.run("MATCH (:actor { id: {x} })--(movie) RETURN movie.Name", parameters("x", Id));
-        			System.out.println(actor_movies.list());
         			//if () --if movies list isnt empty fill movies_list
         			tx.success();  // Mark this write as successful.
         		} else {
