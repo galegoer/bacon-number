@@ -100,7 +100,15 @@ public class Movie implements HttpHandler, AutoCloseable
 	}
 public void handleGet(HttpExchange r) throws IOException, JSONException {
      String body = Utils.convert(r.getRequestBody());
-     JSONObject deserialized = new JSONObject(body);
+	 	JSONObject deserialized;
+	 	
+	 	try {
+	 		deserialized = new JSONObject(body);
+	 	} catch (Exception e) {
+	 		//Error parsing the JSON Message
+	 		r.sendResponseHeaders(400, -1);
+	 		return;
+	 	}
 
      String Id = memory.getValue();
      StatementResult movie_name;
@@ -142,16 +150,16 @@ public void handleGet(HttpExchange r) throws IOException, JSONException {
     	 actors_list = "";
      else {
      	for (int i = 0; i < results.size(); i++) {
-     		actors_list = actors_list + results.get( i ).get("actor.id") + ",";
+     		actors_list = actors_list + results.get( i ).get("actor.id");
      		if (i != results.size() -1)
-     			actors_list += "\n\t\t";
+     			actors_list += ",\n\t\t";
      	}
      	actors_list += "\n\t";
      }
      
      String response = "{\n\t" + 
-     		"\"movieId\": " + "\"" + Id + "\"\n\t" +
-     		"\"name\": " + "\"" + movie_name.single().get( 0 ).asString() + "\"\n\t" + 
+     		"\"movieId\": " + "\"" + Id + "\",\n\t" +
+     		"\"name\": " + "\"" + movie_name.single().get( 0 ).asString() + "\",\n\t" + 
      		"\"actors\": " + 
      			"[" + actors_list + "]"
      		+ "\n}";

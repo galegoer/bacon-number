@@ -2,6 +2,7 @@ package ca.utoronto.utm.mcs;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.util.List;
 
 import org.json.*;
 
@@ -52,6 +53,7 @@ public class Actor implements HttpHandler, AutoCloseable
 	 		r.sendResponseHeaders(400, -1);
 	 		return;
 	 	}
+	 	
 	 	String name = memory.getValue();
         String Id = memory.getValue();
         //Can have more names so only check for name and actorId
@@ -108,7 +110,6 @@ public void handleGet(HttpExchange r) throws IOException, JSONException {
         	r.sendResponseHeaders(400, -1);
         	return;
         }
-        //NEED TO RETURN 400 FOR BAD FORMAT I.E DUPLICATE KEYS
         
         try (Session session = driver.session())
         {	
@@ -117,9 +118,7 @@ public void handleGet(HttpExchange r) throws IOException, JSONException {
         		actor_name = tx.run("MATCH (a:actor) WHERE a.id = $actorId RETURN a.Name", parameters("actorId", Id)); 
         		if(actor_name.hasNext()) { //actor_id exists
         			//retrieve movies since we know actorID is in the database
-        			//actor_movies = tx.run("MATCH (actor { actorId: {x} })<-[:ACTED_BY]-(movie) RETURN movie.Name", parameters("x", Id));
-        			actor_movies = tx.run("MATCH (:actor { id: {x} })--(movie) RETURN movie.Name", parameters("x", Id));
-        			//if () --if movies list isnt empty fill movies_list
+        			actor_movies = tx.run("MATCH (:actor { id: {x} })--(movie) RETURN movie.id", parameters("x", Id));
         			tx.success();  // Mark this write as successful.
         		} else {
         			r.sendResponseHeaders(404, -1); //SEND 404 NOT FOUND IF NAME ISNT FOUND I.E NO ACTORID IN DB
@@ -132,31 +131,31 @@ public void handleGet(HttpExchange r) throws IOException, JSONException {
         }
         
         String movies_list = "\n\t\t";
-        //put list of movies into a long string
-        if (!actor_movies.hasNext())
+        List<Record> results = actor_movies.list();
+        if (results.isEmpty()) 
         	movies_list = "";
         else {
-        	for (int i = 0; i < actor_movies.list().size(); i++) {
-        		movies_list = movies_list + "\"" + actor_movies.list().get( i ).toString() + "\",\n";
+        	for (int i = 0; i < results.size(); i++) {
+        		movies_list = movies_list + results.get( i ).get("movie.id");
+        		if (i != results.size() -1)
+        			movies_list += ",\n\t\t";
         	}
         	movies_list += "\n\t";
         }
         
         String response = "{\n\t" + 
-        		"\"actorId\": " + "\"" + Id + "\"\n\t" +
-        		"\"name\": " + "\"" + actor_name.single().get( 0 ).asString() + "\"\n\t" + 
+        		"\"actorId\": " + "\"" + Id + "\",\n\t" +
+        		"\"name\": " + "\"" + actor_name.single().get( 0 ).asString() + "\",\n\t" + 
         		"\"movies\": " + 
         			"[" + movies_list + "]"
-        		+ "\n}";  //change [] to actual list, only empty if list is actually empty 
+        		+ "\n}";
         		
-        //String response_Id = Id + "\n";
-        //String response_name = actor_name + "\n";
-        //String response_movies = actor_movies + "\n";
         r.sendResponseHeaders(200, response.length());
         OutputStream os = r.getResponseBody();
         os.write(response.getBytes());
         os.close();
         return;
+
 
     }
 }
