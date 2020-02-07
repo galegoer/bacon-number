@@ -34,10 +34,7 @@ public class Actor implements HttpHandler, AutoCloseable
         try {
             if (r.getRequestMethod().equals("GET")) {
                 handleGet(r);
-            }// else if (r.getRequestMethod().equals("POST")) {
-            //    handlePost(r);
-            //} 
-            else if (r.getRequestMethod().equals("PUT")) {		// /api/v1/AddActor
+            } else if (r.getRequestMethod().equals("PUT")) {
             	handlePut(r);
             }
         } catch (Exception e) {
@@ -47,62 +44,64 @@ public class Actor implements HttpHandler, AutoCloseable
 
  public void handlePut(HttpExchange r) throws IOException, JSONException {
 	 	String body = Utils.convert(r.getRequestBody());
-	 	JSONObject deserialized = new JSONObject(body);
+	 	JSONObject deserialized;
+	 	try {
+	 		deserialized = new JSONObject(body);
+	 	} catch (Exception e) {
+	 		//Error parsing the JSON Message
+	 		System.out.println(e.getMessage());
+	 		r.sendResponseHeaders(400, -1);
+	 		return;
+	 	}
 	 	//driver = GraphDatabase.driver("bolt://localhost:7687", AuthTokens.basic("neo4j", "1234"));
 	 	//driver = GraphDatabase.driver("http://localhost:7474", AuthTokens.basic("neo4j", "1234"));
-	 	
 	 	String name = memory.getValue();
         String Id = memory.getValue();
-        
-        if (deserialized.has("name"))
-            name = deserialized.getString("name");
-        else {
+        //Can have more names so only check for name and actorId
+        if(deserialized.has("actorId") && deserialized.has("name")) {
+        	name = deserialized.getString("name");
+        	Id = deserialized.getString("actorId");
+        } else {
+        	//missing actorId and or name
         	r.sendResponseHeaders(400, -1);
         	return;
         }
-        if (deserialized.has("actorId"))
-            Id = deserialized.getString("actorId");
-        else {
-        	r.sendResponseHeaders(400, -1);
-        	return;
-        }
-        //NEED TO RETURN 400 if there is garbage after the actorid
-        
-	 	//create node 
         // Sessions are lightweight and disposable connection wrappers.
         try (Session session = driver.session())
         {	
         	try (Transaction tx = session.beginTransaction())
         	{
         		StatementResult result = tx.run("MATCH (a:actor) WHERE a.id = $actorId RETURN a", parameters("actorId", Id));
-        		//System.out.println(result.single().get( 0 ).asString());
         		System.out.println(result.hasNext());
         		if(!result.hasNext()) {
-        			// Wrapping Cypher in an explicit transaction provides atomicity
-                    // and makes handling errors much easier
+        			//add actor because it doesn't exist
                     tx.run("CREATE (a:actor {Name: {x}, id: {y}})", parameters("x", name,"y", Id));
                     tx.success();  // Mark this write as successful.
+                    r.sendResponseHeaders(200, -1);
+                    return;
         		} else {
+        			//actor does exist
         			r.sendResponseHeaders(400, -1);
         			return;
         		}
         	}
-        }catch(Exception e) {
+        } catch(Exception e) {
         	r.sendResponseHeaders(500, -1);
-        	System.out.println(e.toString());
-        	System.out.println("OOF");
         	return;
         }
-        //check nodes with MATCH
-        r.sendResponseHeaders(200, -1);
-        return;
-        //r.sendResponseHeaders(500, -1);
-	}
+}
 
 public void handleGet(HttpExchange r) throws IOException, JSONException {
         String body = Utils.convert(r.getRequestBody());
-        JSONObject deserialized = new JSONObject(body);
-
+        JSONObject deserialized;
+	 	try {
+	 		deserialized = new JSONObject(body);
+	 	} catch (Exception e) {
+	 		//Error parsing the JSON Message
+	 		r.sendResponseHeaders(400, -1);
+	 		return;
+	 	}
+	 	
         String Id = memory.getValue();
         StatementResult actor_name;
         StatementResult actor_movies;
@@ -113,15 +112,13 @@ public void handleGet(HttpExchange r) throws IOException, JSONException {
         	r.sendResponseHeaders(400, -1);
         	return;
         }
-        //NEED TO RETURN 400 if there is garbage after the actorid
         //NEED TO RETURN 400 FOR BAD FORMAT I.E DUPLICATE KEYS
         
         try (Session session = driver.session())
         {	
         	try (Transaction tx = session.beginTransaction())
         	{	
-        		actor_name = tx.run("MATCH (a:actor) WHERE a.id = $actorId RETURN a.Name", parameters("actorId", Id));
-        		//System.out.println(result.hasNext()); 
+        		actor_name = tx.run("MATCH (a:actor) WHERE a.id = $actorId RETURN a.Name", parameters("actorId", Id)); 
         		if(actor_name.hasNext()) { //actor_id exists
         			//retrieve movies since we know actorID is in the database
         			//actor_movies = tx.run("MATCH (actor { actorId: {x} })<-[:ACTED_BY]-(movie) RETURN movie.Name", parameters("x", Id));
@@ -136,7 +133,6 @@ public void handleGet(HttpExchange r) throws IOException, JSONException {
         	}
         }catch(Exception e) {
         	r.sendResponseHeaders(500, -1);
-        	System.out.println(e.toString());
         	return;
         }
         
@@ -168,30 +164,4 @@ public void handleGet(HttpExchange r) throws IOException, JSONException {
         return;
 
     }
-/*
-    public void handlePost(HttpExchange r) throws IOException, JSONException{
-        /* TODO: Implement this.
-           Hint: This is very very similar to the get just make sure to save
-                 your result in memory instead of returning a value.
-        String body = Utils.convert(r.getRequestBody());
-        JSONObject deserialized = new JSONObject(body);
-
-        long first = memory.getValue();
-        long second = memory.getValue();
-
-        if (deserialized.has("firstNumber"))
-            first = deserialized.getLong("firstNumber");
-
-        if (deserialized.has("secondNumber"))
-            second = deserialized.getLong("secondNumber");
-
-        /* TODO: Implement the math logic 
-        long answer = first + second;
-        memory.setValue(answer);
-
-        r.sendResponseHeaders(200, -1);
-    }
-    */
-
-	
 }

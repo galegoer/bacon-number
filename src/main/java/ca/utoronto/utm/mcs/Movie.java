@@ -2,6 +2,7 @@ package ca.utoronto.utm.mcs;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.util.List;
 
 import org.json.*;
 
@@ -47,7 +48,14 @@ public class Movie implements HttpHandler, AutoCloseable
 
  public void handlePut(HttpExchange r) throws IOException, JSONException {
 	 	String body = Utils.convert(r.getRequestBody());
-	 	JSONObject deserialized = new JSONObject(body);
+	 	JSONObject deserialized;
+	 	try {
+	 		deserialized = new JSONObject(body);
+	 	} catch (Exception e) {
+	 		//Error parsing the JSON Message
+	 		r.sendResponseHeaders(400, -1);
+	 		return;
+	 	}
 	 	//driver = GraphDatabase.driver("bolt://localhost:7687", AuthTokens.basic("neo4j", "1234"));
 	 	//driver = GraphDatabase.driver("http://localhost:7474", AuthTokens.basic("neo4j", "1234"));
 	 	
@@ -65,9 +73,7 @@ public class Movie implements HttpHandler, AutoCloseable
         else {
         	r.sendResponseHeaders(400, -1);
         	return;
-        }
-        //NEED TO RETURN 400 if there is garbage after the actorid
-        
+        }        
 	 	//create node 
         // Sessions are lightweight and disposable connection wrappers.
         try (Session session = driver.session())
@@ -83,7 +89,8 @@ public class Movie implements HttpHandler, AutoCloseable
                     tx.run("CREATE (a:movie {Name: {x}, id: {y}})", parameters("x", name,"y", Id));
                     tx.success();  // Mark this write as successful.
         		} else {
-        			r.sendResponseHeaders(400, -1);
+        			//movie doesn't exist
+        			r.sendResponseHeaders(404, -1);
         			return;
         		}
         	}
@@ -98,53 +105,68 @@ public class Movie implements HttpHandler, AutoCloseable
         return;
         //r.sendResponseHeaders(500, -1);
 	}
-/*
- public void handleGet(HttpExchange r) throws IOException, JSONException {
-        String body = Utils.convert(r.getRequestBody());
-        JSONObject deserialized = new JSONObject(body);
+public void handleGet(HttpExchange r) throws IOException, JSONException {
+     String body = Utils.convert(r.getRequestBody());
+     JSONObject deserialized = new JSONObject(body);
 
-        long first = memory.getValue();
-        long second = memory.getValue();
-
-        if (deserialized.has("firstNumber"))
-            first = deserialized.getLong("firstNumber");
-
-        if (deserialized.has("secondNumber"))
-            second = deserialized.getLong("secondNumber");
-
-        /* TODO: Implement the math logic//
-        long answer = first + second;
-		System.out.println(first+","+second+","+answer);
-        String response = Long.toString(answer) + "\n";
-        r.sendResponseHeaders(200, response.length());
-        OutputStream os = r.getResponseBody();
-        os.write(response.getBytes());
-        os.close();
-    }
-
-    public void handlePost(HttpExchange r) throws IOException, JSONException{
-        /* TODO: Implement this.
-           Hint: This is very very similar to the get just make sure to save
-                 your result in memory instead of returning a value.
-        String body = Utils.convert(r.getRequestBody());
-        JSONObject deserialized = new JSONObject(body);
-
-        long first = memory.getValue();
-        long second = memory.getValue();
-
-        if (deserialized.has("firstNumber"))
-            first = deserialized.getLong("firstNumber");
-
-        if (deserialized.has("secondNumber"))
-            second = deserialized.getLong("secondNumber");
-
-        /* TODO: Implement the math logic 
-        long answer = first + second;
-        memory.setValue(answer);
-
-        r.sendResponseHeaders(200, -1);
-    }
-    */
-
-	
+     String Id = memory.getValue();
+     StatementResult movie_name;
+     StatementResult movie_actors;
+     
+     if (deserialized.has("movieId"))
+         Id = deserialized.getString("movieId");
+     else {
+    	//no movieId in input
+     	r.sendResponseHeaders(400, -1);
+     	return;
+     }
+     
+     try (Session session = driver.session())
+     {	
+     	try (Transaction tx = session.beginTransaction())
+     	{	
+     		movie_name = tx.run("MATCH (a:movie) WHERE a.id = $movieId RETURN a.Name", parameters("movieId", Id));
+     		if(movie_name.hasNext()) { 
+     			//movieId exists
+     			//retrieve movies since we know actorID is in the database
+     			movie_actors = tx.run("MATCH (:movie { id: {x} })--(actor) RETURN actor.id", parameters("x", Id));
+     			tx.success();  // Mark this write as successful.
+     		} else {
+     			r.sendResponseHeaders(404, -1); //SEND 404 NOT FOUND IF NAME ISNT FOUND I.E NO movieId IN DB
+     			return;
+     		}
+     	}
+     }catch(Exception e) {
+     	r.sendResponseHeaders(500, -1);
+     	System.out.println(e.toString());
+     	return;
+     }
+     
+     String actors_list = "\n\t\t";
+     //put list of movies into a long string
+     List<Record> results = movie_actors.list(); // store .list() it makes it empty after using .list() once
+     if (results.isEmpty()) 
+    	 actors_list = "";
+     else {
+     	for (int i = 0; i < results.size(); i++) {
+     		actors_list = actors_list + results.get( i ).get("actor.id") + ",";
+     		if (i != results.size() -1)
+     			actors_list += "\n\t\t";
+     	}
+     	actors_list += "\n\t";
+     }
+     
+     String response = "{\n\t" + 
+     		"\"movieId\": " + "\"" + Id + "\"\n\t" +
+     		"\"name\": " + "\"" + movie_name.single().get( 0 ).asString() + "\"\n\t" + 
+     		"\"actors\": " + 
+     			"[" + actors_list + "]"
+     		+ "\n}";
+     		
+     r.sendResponseHeaders(200, response.length());
+     OutputStream os = r.getResponseBody();
+     os.write(response.getBytes());
+     os.close();
+     return;
+}
 }
