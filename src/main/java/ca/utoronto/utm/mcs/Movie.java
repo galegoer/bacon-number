@@ -28,17 +28,13 @@ public class Movie implements HttpHandler, AutoCloseable
     @Override
 	public void close() throws Exception {
 		driver.close();
-		
 	}
 
     public void handle(HttpExchange r) {
         try {
-            //if (r.getRequestMethod().equals("GET")) {
-            //    handleGet(r);
-            //} else if (r.getRequestMethod().equals("POST")) {
-            //    handlePost(r);
-            //} 
-        	if (r.getRequestMethod().equals("PUT")) {		// /api/v1/AddMovie
+            if (r.getRequestMethod().equals("GET")) {
+                handleGet(r); 
+            } else if (r.getRequestMethod().equals("PUT")) {		// /api/v1/AddMovie
             	handlePut(r);
             }
         } catch (Exception e) {

@@ -60,10 +60,25 @@ public void handleGet(HttpExchange r) throws IOException, JSONException {
         	try (Transaction tx = session.beginTransaction())
         	{	
         		StatementResult actor_name = tx.run("MATCH (a:actor) WHERE a.id = $actorId RETURN a.Name", parameters("actorId", Id));
-        		//System.out.println(result.hasNext()); 
+        		if(Id.equals("nm0000102")) { //IT's kevin bacon
+        			StatementResult kevMovies = tx.run("MATCH (:actor { id: {x} })--(movie) RETURN movie.id", parameters("x", Id));
+        			//System.out.println(kevMovies.list());
+  				  	pathList = "\n\t\t{\n\t\t\t"
+  				  			+ "\"actorId\": \"nm0000102\",\n\t\t\t"
+  				  			+ "\"movieId\": " + kevMovies.list().get(0).get("movie.id") + "\n\t\t}"; //just get the first one
+        			String response = "{\n\t" + 
+    	        					  "\"baconNumber\": \"" + number +
+    	        					  "\"\n\t\"baconPath\":[\t" + pathList + 
+    	        					  "\n\t]\n}";
+        			
+    	        	r.sendResponseHeaders(200, response.length()); //No path respond with 200 and undefined
+    	        	OutputStream os = r.getResponseBody();
+    	        	os.write(response.getBytes());
+    	        	os.close();
+    	        	return;
+        		}
         		if(actor_name.hasNext()) { //actor_id exists
         			//retrieve movies since we know actorID is in the database
-        			
         			StatementResult shortestPath = tx.run("MATCH (a:actor),(b:actor)"
                             +"WHERE a.id = $actorId AND b.id = $kevinId "
                             +"MATCH p = shortestPath((a)-[*]-(b))"

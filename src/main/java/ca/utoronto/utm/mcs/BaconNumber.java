@@ -56,13 +56,21 @@ public void handleGet(HttpExchange r) throws IOException, JSONException {
         try (Session session = driver.session())
         {	
         	try (Transaction tx = session.beginTransaction())
-        	{	
+        	{
         		StatementResult actor_name = tx.run("MATCH (a:actor) WHERE a.id = $actorId RETURN a.Name", parameters("actorId", Id));
-        		//System.out.println(result.hasNext()); 
+        		if(Id.equals("nm0000102")) { //KEVIN BACON RETURN
+        			String response = "{\n\t" + 
+        	        		"\"baconNumber\": \"0"
+        	        		+ "\"\n}";
+        			r.sendResponseHeaders(200, response.length()); //No path respond with 200 and undefined
+        			OutputStream os = r.getResponseBody();
+        	        os.write(response.getBytes());
+        	        os.close();
+        			return;
+        		}
         		if(actor_name.hasNext()) { //actor_id exists
         			//retrieve movies since we know actorID is in the database
         			//StatementResult actor_movies = tx.run("MATCH (:actor { id: {x} })--(movie) RETURN movie.id", parameters("x", Id));
-        			
         			StatementResult shortest_path = tx.run("MATCH (a:actor),(b:actor)"
         											+"WHERE a.id = $actorId AND b.id = $kevinId "
         											+"MATCH p = shortestPath((a)-[*]-(b))"
@@ -73,7 +81,7 @@ public void handleGet(HttpExchange r) throws IOException, JSONException {
         			tx.success();  // Mark this write as successful.
         		} else {
         			String response = "{\n\t" + 
-        	        		"\"baconNumber\": " + "\" undefined"
+        	        		"\"baconNumber\": \" undefined"
         	        		+ "\"\n}";
         			r.sendResponseHeaders(200, response.length()); //No path respond with 200 and undefined
         			OutputStream os = r.getResponseBody();
